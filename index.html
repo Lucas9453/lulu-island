@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#d6f1e6">
+<title>嚕嚕島 Lulu Island</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-fruit" viewBox="0 0 40 40">
+    <circle cx="20" cy="24" r="15" fill="currentColor"/>
+    <ellipse cx="15" cy="19" rx="5" ry="3.5" fill="#fff" opacity=".35" transform="rotate(-30 15 19)"/>
+    <ellipse cx="20" cy="31" rx="8" ry="4" fill="#000" opacity=".06"/>
+    <path d="M20 9 q6 -7 13 -3 q-7 5 -13 3z" fill="#5fae53"/>
+    <path d="M20 9 v-5" stroke="#5fae53" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-spk" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12 8.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 11.5 12 4l8.5 7.5M6 10v9.5h4.5v-5h3v5H18V10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M9 6h11v12H9l-6-6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 9.5l5 5M17 9.5l-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+</defs></svg>
+
+<div id="novoice" class="banner" hidden>這台沒有英文語音，聽不到發音（換 Chrome、手機或平板試試）。遊戲照玩，單字會寫在畫面上。</div>
+
+<div id="app">
+
+  <!-- A: Lulu's home -->
+  <section id="scr-home" class="screen">
+    <div class="topbar">
+      <div class="gold-chip" title="金果子"><svg class="fruit-ico"><use href="#i-fruit" style="color:#f3c53d"/></svg><span>金果子 <b id="home-gold">0／30</b></span></div>
+      <button id="btn-settings" class="icon-btn" aria-label="設定"><svg><use href="#i-gear"/></svg></button>
+    </div>
+    <div class="home-status">
+      <div id="home-fed" class="fed">今天還沒餵</div>
+      <div class="sub"><span id="home-stage">蛋</span>・<span id="home-days">一共餵了 0 天</span></div>
+    </div>
+    <div class="stage-area">
+      <div class="pet-wrap">
+        <div class="ground"></div>
+        <div id="home-bubble" class="bubble">我餓了！</div>
+        <div id="home-pet" class="pet home-pet"></div>
+      </div>
+    </div>
+    <button id="btn-feed" class="btn main big">餵嚕嚕</button>
+  </section>
+
+  <!-- intro / C / D / D2: one meal -->
+  <section id="scr-play" class="screen">
+    <div class="playbar">
+      <button id="btn-quit" class="icon-btn small" aria-label="回家"><svg><use href="#i-home"/></svg></button>
+      <div class="play-title"><span id="play-title">動物島・第 1 / 10 顆</span> <span id="play-again" class="tag" hidden>再一次</span></div>
+      <span class="spacer"></span>
+    </div>
+    <div id="play-dots" class="dots"></div>
+    <div class="play-stage">
+      <div id="play-pet" class="pet play-pet"></div>
+      <div id="play-fruit" class="play-fruit"></div>
+    </div>
+
+    <div id="p-intro" class="panel">
+      <div id="intro-en" class="word-en">rabbit</div>
+      <div id="intro-zh" class="word-zh">兔子</div>
+      <div class="row2">
+        <button id="intro-again" class="btn soft"><svg class="ico"><use href="#i-spk"/></svg>再聽一次</button>
+        <button id="intro-feed" class="btn main">餵嚕嚕</button>
+      </div>
+    </div>
+
+    <div id="p-choose" class="panel">
+      <button id="choose-spk" class="spk-big" aria-label="再聽一次"><svg><use href="#i-spk"/></svg></button>
+      <div class="hint">點喇叭再聽一次</div>
+      <div id="choose-word" class="word-en mid" hidden></div>
+      <div id="choose-q" class="q">這顆果子是什麼？</div>
+      <div id="choose-opts" class="grid6"></div>
+    </div>
+
+    <div id="p-spell" class="panel">
+      <div class="spell-top">
+        <button id="spell-spk" class="spk-mid" aria-label="再聽一次"><svg><use href="#i-spk"/></svg></button>
+        <div id="spell-zh" class="word-zh">兔子</div>
+      </div>
+      <div id="spell-note" class="note" hidden>兩種寫法，打一種就好</div>
+      <div id="spell-slots" class="slots"></div>
+      <div id="kbd" class="kbd"></div>
+      <div id="tiles" class="tiles"></div>
+      <div class="row2">
+        <button id="tiles-back" class="btn soft">刪一個</button>
+        <button id="spell-ok" class="btn main">好了！</button>
+      </div>
+    </div>
+
+    <div id="feedback" class="feedback" hidden></div>
+  </section>
+
+  <!-- E: result -->
+  <section id="scr-result" class="screen">
+    <h2 class="res-title">嚕嚕吃飽了，睡著了</h2>
+    <div id="res-pet" class="pet res-pet"></div>
+    <div class="res-card">
+      <div class="res-row"><span class="pair" data-from="0" data-to="1"></span><span>灰 → 綠</span><b id="res-01">0 顆</b></div>
+      <div class="res-row"><span class="pair" data-from="1" data-to="2"></span><span>綠 → 橘</span><b id="res-12">0 顆</b></div>
+      <div class="res-row"><span class="pair" data-from="2" data-to="3"></span><span>橘 → 金</span><b id="res-23">0 顆</b></div>
+      <div id="res-extra" class="res-extra"></div>
+      <div id="res-fruits" class="res-fruits"></div>
+    </div>
+    <div class="row2">
+      <button id="res-home" class="btn soft">回家</button>
+      <button id="res-more" class="btn main">再吃一點</button>
+    </div>
+  </section>
+</div>
+
+<!-- settings -->
+<div id="settings" class="modal" hidden>
+  <div class="sheet" role="dialog" aria-label="設定">
+    <h3>設定</h3>
+    <div class="set-row">
+      <span>拼字方式</span>
+      <div class="seg"><button data-spell="type">打字</button><button data-spell="tiles">字母磚</button></div>
+    </div>
+    <div class="set-row">
+      <span>每餐幾顆</span>
+      <div class="stepper"><button id="pm-minus" aria-label="少一顆">−</button><b id="pm-val">10</b><button id="pm-plus" aria-label="多一顆">＋</button></div>
+    </div>
+    <div class="set-row col">
+      <span>英文語音</span>
+      <div class="voice-line"><select id="voice-sel"></select><button id="voice-test" class="btn soft">試聽</button></div>
+      <div id="voice-none" class="muted" hidden>這台沒有英文語音</div>
+    </div>
+    <div class="set-row">
+      <span>重置進度</span>
+      <button id="reset-btn" class="btn danger">重置</button>
+    </div>
+    <button id="settings-close" class="btn main wide">好了</button>
+  </div>
+</div>
+
+<!-- hatch / grow show -->
+<div id="overlay" class="overlay" hidden>
+  <div class="ov-inner">
+    <div id="ov-title" class="ov-title"></div>
+    <div id="ov-pet" class="pet ov-pet"></div>
+    <div id="ov-text" class="ov-text"></div>
+    <div id="ov-card" class="ov-card" hidden></div>
+    <button id="ov-ok" class="btn main big">好耶！</button>
+  </div>
+</div>
+
+<div id="fx" class="fx" aria-hidden="true"></div>
+
+<script src="data/words_a.js"></script>
+<script src="js/game.js"></script>
+<script src="js/speech.js"></script>
+<script src="js/pet.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

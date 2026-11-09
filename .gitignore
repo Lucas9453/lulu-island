@@ -1,0 +1,11 @@
+# Whitelist: only the files the game needs go public.
+*
+!index.html
+!README.md
+!.gitignore
+!css/
+!css/*.css
+!js/
+!js/*.js
+!data/
+!data/words_a.js
