@@ -1,5 +1,7 @@
 /* Lulu Island v1 - English speech (Web Speech API) and tiny synthesized sound effects (WebAudio).
-   Voice ranking and the SAY table follow the old page (Downloads/小學英檢單字發音.html lines 121-149). */
+   Voice ranking and the SAY table follow the old page (Downloads/小學英檢單字發音.html lines 121-149).
+   v1.2: say() silences the background music (LuluAudio.duck) while it reads; the synthesized effects below are now
+   only the fallback for an effect file that did not load (js/audio.js). */
 (function (root) {
   'use strict';
 
@@ -53,6 +55,17 @@
   // "mouse / mice" is read as "mouse, mice".
   function spoken(en) { return SAY[en] || String(en).replace(/\s*\/\s*/g, ', '); }
 
+  // v1.2 (spec 14-3): the background music goes to 0 while English is read and comes back after it, whatever way
+  // say() ends. Only the newest say() brings it back (an interrupted one must not, the new one is still talking).
+  // No English voice ('none'): nothing is said, but the music stays down for the same 2.5 s window app.js waits.
+  var NONE_HOLD = 2500;
+  var sayNo = 0, sayOpen = false;
+  function duckMusic(down) {
+    var A = root.LuluAudio;
+    if (!A || !A.duck) return 0;
+    try { return A.duck(down) || 0; } catch (e) { return 0; }
+  }
+
   // Resolves with how it finished:
   //   'end'          onend fired: the word was read to the end
   //   'interrupted'  a newer say() / stop() cut it off
@@ -60,6 +73,17 @@
   //   'none'         this device cannot speak English (nothing was said)
   //   'timeout'      onend never came (safety timer)
   function say(text) {
+    var my = ++sayNo, t0 = Date.now();
+    sayOpen = true;
+    var lead = duckMusic(true);   // ms until the music is silent (0 when it is not playing)
+    return speakNow(text, lead, function () { return my !== sayNo; }).then(function (how) {
+      function release() { if (my === sayNo && sayOpen) { sayOpen = false; duckMusic(false); } }
+      var rest = how === 'none' ? NONE_HOLD - (Date.now() - t0) : 0;
+      if (rest > 0) setTimeout(release, rest); else release();
+      return how;
+    });
+  }
+  function speakNow(text, lead, stale) {
     return new Promise(function (res) {
       if (!synth) return res('none');
       if (ready && voices.length && !enVoices.length) return res('none');   // has voices, none English: stay silent
@@ -77,12 +101,20 @@
       setTimeout(function () { fin('timeout'); }, 1500 + text.length * 260);   // some browsers never fire onend
       try {
         synth.cancel();
-        setTimeout(function () { try { synth.speak(u); } catch (e) { fin('error'); } }, 40);   // Chrome drops speak() right after cancel()
+        // Chrome drops speak() right after cancel(); v1.2: also wait until the music has faded out
+        setTimeout(function () {
+          if (stale()) { fin('interrupted'); return; }   // a newer say() / stop() came while waiting: never speak late
+          try { synth.speak(u); } catch (e) { fin('error'); }
+        }, Math.max(40, lead || 0));
       } catch (e) { fin('error'); }
     });
   }
   function sayWord(en) { return say(spoken(en)); }
-  function stop() { try { if (synth) synth.cancel(); } catch (e) { /* ignore */ } }
+  function stop() {
+    sayNo++;   // a say() still waiting to start is dropped
+    if (sayOpen) { sayOpen = false; duckMusic(false); }
+    try { if (synth) synth.cancel(); } catch (e) { /* ignore */ }
+  }
 
   // ---------- sound effects (synthesized, no audio files)
   var ac = null;

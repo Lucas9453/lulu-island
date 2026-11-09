@@ -46,7 +46,7 @@
       words: {},
       feedDays: [],
       today: { date: dayStr(now), fed: 0 },
-      settings: { spell: 'type', perMeal: PER_MEAL.def, voice: null }
+      settings: { spell: 'type', perMeal: PER_MEAL.def, voice: null, music: true, sfx: true }   // v1.2: music, sfx
     };
   }
 
@@ -89,6 +89,8 @@
       if (st.spell === 'type' || st.spell === 'tiles') s.settings.spell = st.spell;
       s.settings.perMeal = toInt(st.perMeal, PER_MEAL.def, PER_MEAL.min, PER_MEAL.max);
       if (typeof st.voice === 'string' && st.voice) s.settings.voice = st.voice;
+      if (st.music === false) s.settings.music = false;   // v1.2: an old save has no music / sfx field -> on
+      if (st.sfx === false) s.settings.sfx = false;
     }
     return s;
   }
@@ -112,7 +114,8 @@
   // Reset progress, keep settings.
   function reset(s, now) {
     var d = defaults(now);
-    d.settings = { spell: s.settings.spell, perMeal: s.settings.perMeal, voice: s.settings.voice };
+    d.settings = { spell: s.settings.spell, perMeal: s.settings.perMeal, voice: s.settings.voice,
+      music: s.settings.music !== false, sfx: s.settings.sfx !== false };
     return d;
   }
 

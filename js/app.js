@@ -1,8 +1,9 @@
 /* Lulu Island v1 - screens and flow.
-   Rules: game.js (LuluGame). Voice + sound: speech.js (LuluSpeech). Pet drawing: pet.js (LuluPet). */
+   Rules: game.js (LuluGame). Voice: speech.js (LuluSpeech). Music + effects (v1.2): audio.js (LuluAudio).
+   Pet drawing: pet.js (LuluPet). */
 (function () {
   'use strict';
-  var G = window.LuluGame, S = window.LuluSpeech, P = window.LuluPet;
+  var G = window.LuluGame, S = window.LuluSpeech, P = window.LuluPet, A = window.LuluAudio || null;
   var ISLAND = window.LULU_WORDS_A.topics[0];
   var WORDS = ISLAND.words;
   var ISLAND_NAME = '動物島';
@@ -26,9 +27,12 @@
   function persist() { G.save(storage, save); }
   persist();
   if (save.settings.voice) S.setVoice(save.settings.voice);
+  if (A) { A.setMusic(save.settings.music); A.setSfx(save.settings.sfx); }
 
   // ---------- helpers
   function $(id) { return document.getElementById(id); }
+  // v1.2 sound effect by role (spec 14 table); sound never breaks the game
+  function sfx(role, delay) { if (A) { try { A.play(role, delay); } catch (e) { /* ignore */ } } }
   function make(tag, cls, text) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -59,7 +63,7 @@
     if (item && item.mode === 'choose') $('choose-word').hidden = hasEnglish;
     fillVoices(st);
   });
-  function unlockOnce() { S.unlock(); }
+  function unlockOnce() { S.unlock(); if (A) A.unlock(); }
   document.addEventListener('pointerdown', unlockOnce, { once: true });
   document.addEventListener('keydown', unlockOnce, { once: true });
 
@@ -77,8 +81,34 @@
     P.render($('home-pet'), save.stage, fed ? 'normal' : 'hungry');
     show('home');
   }
-  $('btn-feed').addEventListener('click', startMeal);
+  $('btn-feed').addEventListener('click', function () { sfx('tap'); startMeal(); });
   $('btn-settings').addEventListener('click', openSettings);
+
+  // v1.2: speaker button = all sound off (slashed icon) / all on again; the two settings switches follow it
+  function syncSound() {
+    var m = save.settings.music !== false, f = save.settings.sfx !== false, off = !m && !f, b = $('btn-sound');
+    $('sw-music').setAttribute('aria-checked', m ? 'true' : 'false');
+    $('sw-sfx').setAttribute('aria-checked', f ? 'true' : 'false');
+    b.classList.toggle('off', off);
+    b.setAttribute('aria-pressed', off ? 'true' : 'false');
+    b.setAttribute('aria-label', off ? '聲音全開' : '聲音全關');
+    b.querySelector('use').setAttribute('href', off ? '#i-snd-off' : '#i-snd');
+  }
+  function setSound(music, fx) {
+    save.settings.music = !!music;
+    save.settings.sfx = !!fx;
+    persist();
+    if (A) { A.setMusic(save.settings.music); A.setSfx(save.settings.sfx); }
+    syncSound();
+    sfx('toggle');   // heard only when effects are on after the change
+  }
+  $('btn-sound').addEventListener('click', function () {
+    var allOff = !save.settings.music && !save.settings.sfx;
+    setSound(allOff, allOff);
+  });
+  $('sw-music').addEventListener('click', function () { setSound(!save.settings.music, save.settings.sfx); });
+  $('sw-sfx').addEventListener('click', function () { setSound(save.settings.music, !save.settings.sfx); });
+  syncSound();
 
   // ---------- one meal
   var meal = null, item = null, busy = false, spell = null;
@@ -92,7 +122,7 @@
     nextItem();
   }
 
-  $('btn-quit').addEventListener('click', function () { S.stop(); meal = null; item = null; renderHome(); });
+  $('btn-quit').addEventListener('click', function () { sfx('tap'); S.stop(); meal = null; item = null; renderHome(); });
 
   function petStage() { return save.stage; }
 
@@ -119,6 +149,7 @@
     f.innerHTML = '';
     var fr = fruitEl(item.w, 'drop-in');
     f.appendChild(fr);
+    sfx('drop');
     ['intro', 'choose', 'spell'].forEach(function (m) { $('p-' + m).classList.toggle('on', m === item.mode); });
     var it = item;
     if (item.mode === 'intro') {
@@ -180,7 +211,8 @@
     var res = G.answer(save, meal, correct);
     persist();
     if (res.correct) {
-      S.sfx.ding();
+      if (it.mode !== 'intro') sfx('correct');                       // the intro's 餵嚕嚕 already went "tap"
+      if (res.from >= 1 && res.to > res.from) sfx('levelup', 0.25);   // green -> orange, orange -> gold
       setFruitColor(res.to);
       renderDots();
       setTimeout(function () {
@@ -189,9 +221,10 @@
         P.render($('play-pet'), petStage(), 'yum');
         P.bounce($('play-pet'));
       }, 250);
+      setTimeout(function () { if (item === it) sfx('nom'); }, 800);   // the fruit reaches the mouth (.6 s flight)
       setTimeout(function () { if (item === it) nextItem(); }, T.eat);
     } else {
-      S.sfx.boop();
+      sfx('wrong');
       P.render($('play-pet'), petStage(), 'sad');
       setFruitColor(res.to);
       renderDots();
@@ -233,9 +266,10 @@
     lockFeed(true);
     listenGate(it.word.en).then(function (g) { if (g.latest && item === it && !busy) lockFeed(false); });
   }
-  $('intro-again').addEventListener('click', function () { if (item && item.mode === 'intro' && !busy) introListen(); });
+  $('intro-again').addEventListener('click', function () { if (item && item.mode === 'intro' && !busy) { sfx('tap'); introListen(); } });
   $('intro-feed').addEventListener('click', function () {
     if (!item || item.mode !== 'intro' || $('intro-feed').disabled) return;   // grey = still listening: nothing happens
+    if (!busy) sfx('tap');
     onAnswer(true);
   });
 
@@ -266,7 +300,7 @@
       box.appendChild(b);
     });
   }
-  $('choose-spk').addEventListener('click', function () { if (item && !busy) S.sayWord(item.word.en); });
+  $('choose-spk').addEventListener('click', function () { if (item && !busy) { sfx('tap'); S.sayWord(item.word.en); } });
 
   // ---------- D / D2: spell (orange -> gold, gold review)
   var KEY_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
@@ -345,11 +379,12 @@
     }
     if (spell.typed.length >= maxLen()) return;
     spell.typed += ch;
-    S.sfx.pop();
+    sfx('type');
     renderSlots();
   }
   function spellBack() {
     if (busy || !spell) return;
+    sfx('type');
     if (spell.tiles) {
       var last = spell.filled.pop();
       if (last) spell.tiles[last.tile].used = false;
@@ -363,7 +398,7 @@
     if (busy || spell.tiles[i].used) return;
     spell.tiles[i].used = true;
     spell.filled.push({ ch: spell.tiles[i].ch, tile: i });
-    S.sfx.pop();
+    sfx('type');
     renderTiles();
     renderSlots();
   }
@@ -389,6 +424,7 @@
         (function (k) {
           s.addEventListener('click', function () {   // tap a filled letter to send it back
             if (busy) return;
+            sfx('type');
             var f = spell.filled.splice(k, 1)[0];
             if (f) spell.tiles[f.tile].used = false;
             renderTiles();
@@ -401,10 +437,11 @@
   }
   $('tiles-back').addEventListener('click', spellBack);
   $('spell-ok').addEventListener('click', spellSubmit);
-  $('spell-spk').addEventListener('click', function () { if (item) S.sayWord(item.word.en); });
+  $('spell-spk').addEventListener('click', function () { if (item) { sfx('tap'); S.sayWord(item.word.en); } });
 
   function spellSubmit() {
     if (busy || !spell) return;
+    sfx('tap');   // 好了！ (and Enter); correct / wrong follows at once
     var text = currentText();
     if (!text.trim()) {
       var box = $('spell-slots');
@@ -456,7 +493,7 @@
     return new Promise(function (res) {
       var b = $('ov-ok');
       b.hidden = false;
-      b.onclick = function () { b.onclick = null; $('overlay').hidden = true; clearConfetti(); res(); };
+      b.onclick = function () { b.onclick = null; sfx('tap'); $('overlay').hidden = true; clearConfetti(); res(); };
     });
   }
 
@@ -464,7 +501,7 @@
     overlay('蛋要破殼了！', '');
     P.render($('ov-pet'), 'egg', 'normal');
     return P.hatch($('ov-pet')).then(function () {
-      S.sfx.tada();
+      sfx('hatch');
       confetti(30);
       $('ov-title').textContent = '破殼了！是小嚕！';
       $('ov-text').textContent = '每天餵嚕嚕吃果子，牠會慢慢長大。';
@@ -476,7 +513,7 @@
     overlay('動物島 30 顆全變金果子！', '');
     P.render($('ov-pet'), 'small', 'yum');
     return P.grow($('ov-pet')).then(function () {
-      S.sfx.tada();
+      sfx('grow');
       confetti(70);
       $('ov-title').textContent = '小嚕長大了，變成嚕嚕！';
       $('ov-text').textContent = '你把動物島 30 個單字都學會拼了！';
@@ -535,14 +572,16 @@
     });
     P.render($('res-pet'), save.stage, 'sleep');
     show('result');
+    sfx('meal_done');
   }
-  $('res-home').addEventListener('click', renderHome);
-  $('res-more').addEventListener('click', startMeal);
+  $('res-home').addEventListener('click', function () { sfx('tap'); renderHome(); });
+  $('res-more').addEventListener('click', function () { sfx('tap'); startMeal(); });
 
   // ---------- settings
-  function openSettings() { syncSettings(); $('settings').hidden = false; }
-  function closeSettings() { $('settings').hidden = true; resetArm(false); renderHome(); }
+  function openSettings() { sfx('open'); syncSettings(); $('settings').hidden = false; }
+  function closeSettings() { sfx('close'); $('settings').hidden = true; resetArm(false); renderHome(); }
   function syncSettings() {
+    syncSound();
     Array.prototype.forEach.call(document.querySelectorAll('[data-spell]'), function (b) {
       b.classList.toggle('on', b.getAttribute('data-spell') === save.settings.spell);
     });
@@ -550,10 +589,11 @@
     fillVoices(S.status());
   }
   Array.prototype.forEach.call(document.querySelectorAll('[data-spell]'), function (b) {
-    b.addEventListener('click', function () { save.settings.spell = b.getAttribute('data-spell'); persist(); syncSettings(); });
+    b.addEventListener('click', function () { sfx('toggle'); save.settings.spell = b.getAttribute('data-spell'); persist(); syncSettings(); });
   });
   function stepMeal(d) {
     var p = G.PER_MEAL;
+    sfx('toggle');
     save.settings.perMeal = Math.max(p.min, Math.min(p.max, save.settings.perMeal + d));
     persist();
     syncSettings();
@@ -579,7 +619,7 @@
     S.setVoice(e.target.value);
     persist();
   });
-  $('voice-test').addEventListener('click', function () { S.sayWord('Hello, I am Lulu.'); });
+  $('voice-test').addEventListener('click', function () { sfx('tap'); S.sayWord('Hello, I am Lulu.'); });
   var resetTimer = null;
   function resetArm(on) {
     var b = $('reset-btn');
@@ -589,6 +629,7 @@
     if (on) resetTimer = setTimeout(function () { resetArm(false); }, 4000);
   }
   $('reset-btn').addEventListener('click', function () {
+    sfx('tap');
     if (!$('reset-btn').classList.contains('armed')) { resetArm(true); return; }
     save = G.reset(save);
     persist();
