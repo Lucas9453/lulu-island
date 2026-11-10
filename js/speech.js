@@ -90,7 +90,8 @@
       var u = new SpeechSynthesisUtterance(text);
       if (chosen) u.voice = chosen;
       u.lang = chosen ? chosen.lang : 'en-US';
-      u.rate = 0.9;
+      u.rate = 0.8;      // v1.2.1 (Tai 261109: louder, clearer): slower than default so each sound is heard
+      u.volume = 1;      // 1 is the engine's maximum; the music is at 0 while this plays
       var done = false;
       function fin(how) { if (!done) { done = true; res(how); } }
       u.onend = function () { fin('end'); };

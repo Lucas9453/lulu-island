@@ -207,6 +207,7 @@
   function onAnswer(correct, showWrong) {
     if (busy) return;
     busy = true;
+    S.stop();   // v1.2.1: answering ends the reading and lifts the duck, so the answer sound is heard
     var it = item, t0 = Date.now();   // every timer below checks item === it, so going home mid-way stops them
     var res = G.answer(save, meal, correct);
     persist();

@@ -11,8 +11,10 @@
 (function (root) {
   'use strict';
 
-  var BGM_VOL = 0.35, SFX_VOL = 0.9;
-  var DUCK_OUT = 0.15, DUCK_HOLD = 0.4, DUCK_IN = 0.8;   // seconds (spec 14-3)
+  var BGM_VOL = 0.35, SFX_VOL = 0.7;
+  // seconds (spec 14-3). v1.2.1 after Tai listened (261109): music vanishes faster before a word (0.15 -> 0.05),
+  // comes back later and slower after it (hold 0.4 -> 1.0, ramp 0.8 -> 1.5). Effects drop to 0 with the music too.
+  var DUCK_OUT = 0.05, DUCK_HOLD = 1.0, DUCK_IN = 1.5, SFX_BACK = 0.03;   // effects return at once (an answer sound follows a stop())
   var FADE_IN = 1.0;       // music appears: loaded, switched on, tab shown again
   var HIDE_OUT = 0.3;      // tab hidden: fade out, then suspend
   var OFF_OUT = 0.03;      // music switched off: "at once", short enough to avoid a click
@@ -203,6 +205,13 @@
         g.linearRampToValueAtTime(target(), up + DUCK_IN);
         plan = { ctx: t, upFrom: up, fullAt: up + DUCK_IN, to: target() };
       }
+      if (sfxGain) {   // v1.2.1: effects go silent with the music so no tail (e.g. the fruit drop) sits under the word
+        var sg = sfxGain.gain;
+        sg.cancelScheduledValues(t);
+        sg.setValueAtTime(sg.value, t);
+        if (ducked) sg.linearRampToValueAtTime(0, t + DUCK_OUT);
+        else sg.linearRampToValueAtTime(SFX_VOL, t + SFX_BACK);
+      }
     }
     log('duck', ducked, plan);   // ctx seconds: when it was called and when the ramp is scheduled to end
     if (bgmEl) {
@@ -243,6 +252,7 @@
   }
   function playNow(role, delay) {
     if (!on.sfx) return 'off';
+    if (ducked && bgmEl) return 'ducked';   // <audio> fallback (file://): no effect while a word is being read
     if (hidden) return 'none';
     if (mode === 'webaudio' && ctx && buf[role]) {
       resume();
