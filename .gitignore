@@ -14,3 +14,7 @@
 !assets/audio/*.mp3
 !assets/audio/sfx/
 !assets/audio/sfx/*.mp3
+!assets/model/
+!assets/model/*.glb
+!js/vendor/
+!js/vendor/*.js

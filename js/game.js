@@ -46,7 +46,7 @@
       words: {},
       feedDays: [],
       today: { date: dayStr(now), fed: 0 },
-      settings: { spell: 'type', perMeal: PER_MEAL.def, voice: null, music: true, sfx: true }   // v1.2: music, sfx
+      settings: { spell: 'type', perMeal: PER_MEAL.def, voice: null, music: true, sfx: true, pet3d: 'on' }   // v1.2: music, sfx  v1.3: pet3d on|off|auto-off
     };
   }
 
@@ -91,6 +91,7 @@
       if (typeof st.voice === 'string' && st.voice) s.settings.voice = st.voice;
       if (st.music === false) s.settings.music = false;   // v1.2: an old save has no music / sfx field -> on
       if (st.sfx === false) s.settings.sfx = false;
+      if (st.pet3d === 'off' || st.pet3d === 'auto-off') s.settings.pet3d = st.pet3d;   // v1.3: old save -> on
     }
     return s;
   }
@@ -115,7 +116,7 @@
   function reset(s, now) {
     var d = defaults(now);
     d.settings = { spell: s.settings.spell, perMeal: s.settings.perMeal, voice: s.settings.voice,
-      music: s.settings.music !== false, sfx: s.settings.sfx !== false };
+      music: s.settings.music !== false, sfx: s.settings.sfx !== false, pet3d: s.settings.pet3d || 'on' };
     return d;
   }
 

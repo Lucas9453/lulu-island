@@ -241,6 +241,7 @@ svg { display: block; }
   background: #fff; font: inherit; font-size: 15px; padding: 0 10px; color: var(--ink);
 }
 .muted { color: var(--muted); font-size: 15px; }
+#pet3d-note { flex-basis: 100%; }   /* v1.3: why 3D is off, under the 3D switch */
 /* v1.2: music / effects switches (the whole pill is the button, >= 56 x 56) */
 .sw-pair { display: flex; gap: 8px; }
 .sw {

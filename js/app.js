@@ -28,6 +28,8 @@
   persist();
   if (save.settings.voice) S.setVoice(save.settings.voice);
   if (A) { A.setMusic(save.settings.music); A.setSfx(save.settings.sfx); }
+  // v1.3: 3D pet (pet.js decides 3D or 2D). A slow device turns it off by itself and that is remembered.
+  if (P.config) P.config({ pref: save.settings.pet3d, onAutoOff: function () { save.settings.pet3d = 'auto-off'; persist(); syncPet3d(); } });
 
   // ---------- helpers
   function $(id) { return document.getElementById(id); }
@@ -109,6 +111,26 @@
   $('sw-music').addEventListener('click', function () { setSound(!save.settings.music, save.settings.sfx); });
   $('sw-sfx').addEventListener('click', function () { setSound(save.settings.music, !save.settings.sfx); });
   syncSound();
+
+  // v1.3: settings switch 3D Lulu (on / off; 'auto-off' = this device was too slow, shown as off)
+  var PET3D_NOTE = { 'auto-off': '這台跑 3D 太慢，已自動換回平面嚕嚕', file: '雙擊開啟只能用平面嚕嚕（用網址開才有 3D）', 'no-webgl': '這台瀏覽器不支援 3D，用平面嚕嚕' };
+  function syncPet3d() {
+    var sw = $('sw-pet3d');
+    if (!sw) return;
+    var on = save.settings.pet3d === 'on', inf = P.info ? P.info() : {};
+    sw.setAttribute('aria-checked', on ? 'true' : 'false');
+    var note = save.settings.pet3d === 'auto-off' ? PET3D_NOTE['auto-off'] : (on && PET3D_NOTE[inf.reason]) || '';
+    $('pet3d-note').textContent = note;
+    $('pet3d-note').hidden = !note;
+  }
+  if ($('sw-pet3d')) $('sw-pet3d').addEventListener('click', function () {
+    save.settings.pet3d = save.settings.pet3d === 'on' ? 'off' : 'on';
+    persist();
+    if (P.setPref) P.setPref(save.settings.pet3d);
+    syncPet3d();
+    sfx('toggle');
+  });
+  syncPet3d();
 
   // ---------- one meal
   var meal = null, item = null, busy = false, spell = null;
@@ -583,6 +605,7 @@
   function closeSettings() { sfx('close'); $('settings').hidden = true; resetArm(false); renderHome(); }
   function syncSettings() {
     syncSound();
+    syncPet3d();
     Array.prototype.forEach.call(document.querySelectorAll('[data-spell]'), function (b) {
       b.classList.toggle('on', b.getAttribute('data-spell') === save.settings.spell);
     });

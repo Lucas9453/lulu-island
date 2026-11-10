@@ -10,3 +10,8 @@
 - 背景音樂：Zane Little Music「Flowerbed Fields [Loop]」 https://opengameart.org/content/flowerbed-fields-loop
 - 音效：Juhani Junkala（SubspaceAudio）「512 Sound Effects (8-bit style)」 https://opengameart.org/content/512-sound-effects-8-bit-style ；Kenney「Interface Sounds」「Music Jingles」 https://kenney.nl/assets
 - 唸英文的時候背景音樂會自動靜音，唸完再回來；設定裡可以分開關掉音樂和音效。
+
+## 3D 嚕嚕（v1.3）
+- 模型：Tai 用 Tripo AI 從自己畫的嚕嚕生成（專業版匯出），減面後 `assets/model/lulu.glb`。
+- 3D 繪圖：three.js 0.160.0（MIT License，Copyright 2010-2023 Three.js Authors），放在 `js/vendor/`，不從外部網址載入。
+- 用 http/https 開才是 3D；雙擊 index.html、不支援 WebGL、載不動或跑不動時自動用 2D 嚕嚕，設定頁可以關掉 3D。

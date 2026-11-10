@@ -195,7 +195,7 @@
     return '<svg class="lp-svg lp-s-' + stage + ' lp-m-' + mood + (extraCls ? ' ' + extraCls : '') + '" viewBox="0 0 100 100" aria-hidden="true">';
   }
 
-  function render(el, stage, mood) {
+  function render2d(el, stage, mood) {
     install();
     stage = SCALE[stage] ? stage : 'egg';
     mood = FACES[mood] ? mood : 'normal';
@@ -224,26 +224,49 @@
   function wait(ms) { return new Promise(function (r) { setTimeout(r, ms * timing.slow); }); }
 
   // egg shakes, cracks, the two halves fly apart, small Lulu pops out
-  function hatch(el) {
+  // v1.3: with 3D on, the egg part stays 2D; at the break a flash + streamers, then the 3D baby pops (pet3d.js)
+  function hatch2d(el, use3d) {
     install();
     var s = SCALE.small;
     el.innerHTML = svgOpen('egg', 'normal', 'lp-hatch') + shadow(22) +
-      '<g class="lp-baby"><g' + scaleAttr(s) + '>' + petMarkup('small', 'yum') + '</g></g>' +
+      (use3d ? '' : '<g class="lp-baby"><g' + scaleAttr(s) + '>' + petMarkup('small', 'yum') + '</g></g>') +
       '<g class="lp-shell">' +
       '<g class="lp-bot" clip-path="url(#lp-bot)">' + eggShape() + '</g>' +
       '<g class="lp-top" clip-path="url(#lp-top)">' + eggShape() + '</g>' +
       '<polyline class="lp-crack" points="22,55 30,50 40,58 50,50 60,58 70,50 78,55" fill="none" stroke="' + C.ink + '" stroke-width="2" stroke-linejoin="round" opacity=".7"/>' +
-      '</g>' + sparks() + '</svg>';
+      '</g>' + sparks() + (use3d ? burst() : '') + '</svg>';
     var svg = el.firstChild;
     return wait(50)
       .then(function () { svg.classList.add('p1'); return wait(1250); })
       .then(function () { svg.classList.add('p2'); return wait(450); })
-      .then(function () { svg.classList.add('p3'); return wait(1300); })
-      .then(function () { render(el, 'small', 'yum'); });
+      .then(function () {
+        svg.classList.add('p3');
+        if (use3d) {
+          svg.classList.add('lp3-fx', 'on');
+          try { D3.api.pop(el); } catch (e) { fail('hatch: ' + e.message); }
+        }
+        return wait(1300);
+      })
+      .then(function () {
+        if (use3d && svg.parentNode === el) el.removeChild(svg);
+        render(el, 'small', 'yum', true);
+      });
+  }
+
+  // flash + streamers for the 3D hatch / grow (styles live in pet3d.js)
+  function burst() {
+    var cols = ['#f3c53d', '#f0a04b', '#6cc27a', '#ff8a5b', '#74c0fc', '#f7a8b8'], out = '';
+    out += '<circle class="lp3-flash" cx="50" cy="60" r="38" fill="#fffbe6"/>';
+    for (var i = 0; i < 12; i++) {
+      var a = i / 12 * Math.PI * 2, dx = Math.round(Math.cos(a) * 46), dy = Math.round(Math.sin(a) * 40 - 10);
+      out += '<rect class="lp3-st" x="48" y="56" width="4" height="9" rx="1" fill="' + cols[i % cols.length] +
+        '" style="--dx:' + dx + 'px;--dy:' + dy + 'px;transform-box:fill-box;transform-origin:center;animation-delay:' + (i % 3) * 0.05 + 's"/>';
+    }
+    return out;
   }
 
   // small Lulu pulses, a ring flashes, she grows to full size with a sprout
-  function grow(el) {
+  function grow2d(el) {
     install();
     el.innerHTML = svgOpen('small', 'yum', 'lp-growing') + shadow(24) +
       '<circle class="lp-ring" cx="50" cy="58" r="40" fill="none" stroke="' + C.gold + '" stroke-width="4"/>' +
@@ -265,7 +288,26 @@
       .then(function () { render(el, 'normal', 'yum'); });
   }
 
-  function bounce(el) {
+  // v1.3 3D grow: spin twice, flash, spring to the new size, the sprout pops out (2D ring / sparks on top)
+  function grow3d(el) {
+    install();
+    D3.api.grow(el, 'small', 'normal');
+    var fx = document.createElement('div');
+    fx.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none';
+    fx.innerHTML = '<svg class="lp-svg lp3-fx" viewBox="0 0 100 100" style="position:absolute;left:0;top:0">' +
+      '<circle class="lp3-ring" cx="50" cy="58" r="40" fill="none" stroke="' + C.gold + '" stroke-width="4"/>' + burst() + '</svg>';
+    el.appendChild(fx);
+    var svg = fx.firstChild;
+    return wait(1450)
+      .then(function () { svg.classList.add('on'); return wait(1000); })
+      .then(function () { svg.classList.add('lp-growing', 'p3'); svg.innerHTML += sparks(); return wait(1100); })
+      .then(function () {
+        if (fx.parentNode) fx.parentNode.removeChild(fx);
+        render(el, 'normal', 'yum', true);
+      });
+  }
+
+  function bounce2d(el) {
     var svg = el.querySelector('svg');
     if (!svg) return;
     svg.classList.remove('lp-hop');
@@ -273,7 +315,7 @@
     svg.classList.add('lp-hop');
   }
 
-  function mouth(el) {
+  function mouth2d(el) {
     var m = el.querySelector('.lp-mouth');
     var r = (m || el).getBoundingClientRect();
     if (!m) return { x: r.left + r.width / 2, y: r.top + r.height * 0.7 };
@@ -290,6 +332,144 @@
       bodyFlat('#f6c98a') + FACES.normal() + '</svg>';
   }
 
-  root.LuluPet = { render: render, hatch: hatch, grow: grow, bounce: bounce, mouth: mouth, formArt: formArt, timing: timing };
+  // ---------- v1.3: 3D or 2D (docs/spec_v1.md section 15). The egg and formArt stay 2D.
+  // 3D needs http/https (module scripts and the .glb do not load from file://) + WebGL + settings.pet3d 'on'.
+  // pet3d.js is injected only then; until it is ready, and whenever it fails, everything is the 2D pet above.
+  var SELF = (document.currentScript && document.currentScript.src) || '';
+  var LOAD_MAX = 8000;   // spec 15-6: not loaded in 8 s -> 2D this visit (the download goes on into the cache)
+  var D3 = { pref: null, state: 'off', reason: 'not configured', api: null, injected: false, timer: 0, t0: 0, onAutoOff: null, waitedMs: null };
+  var tracked = [];
+
+  function canTry() {
+    if (!/^https?:$/.test(location.protocol)) return 'file';
+    if (!SELF) return 'no-script-src';
+    if (!('noModule' in document.createElement('script'))) return 'no-module';
+    try {
+      var c = document.createElement('canvas');
+      if (!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')))) return 'no-webgl';
+    } catch (e) { return 'no-webgl'; }
+    return '';
+  }
+  function config(o) {
+    o = o || {};
+    D3.onAutoOff = o.onAutoOff || null;
+    setPref(o.pref || 'on');
+  }
+  function setPref(p) {
+    D3.pref = p;
+    if (p !== 'on') { D3.reason = p; to2d('off'); return; }
+    try3d();
+  }
+  function try3d() {
+    var why = canTry();
+    if (why) { D3.state = 'off'; D3.reason = why; return; }
+    if (D3.state === 'on' || D3.state === 'loading') return;
+    if (D3.api && D3.api.stats.loadMs !== null) { go3d(); return; }
+    D3.state = 'loading'; D3.reason = 'loading'; D3.t0 = Date.now();
+    clearTimeout(D3.timer);
+    D3.timer = setTimeout(function () {
+      if (D3.state === 'loading') { D3.state = 'late'; D3.reason = 'late: model not ready in ' + LOAD_MAX + ' ms, 2D this visit'; }
+    }, LOAD_MAX);
+    if (D3.api) { startLoad(); return; }
+    if (D3.injected) return;
+    D3.injected = true;
+    var s = document.createElement('script');
+    s.type = 'module';
+    s.src = SELF.replace(/pet\.js(\?.*)?$/, 'pet3d.js');
+    s.onerror = function () { fail('module did not load'); };
+    document.head.appendChild(s);
+  }
+  function startLoad() {
+    D3.api.load().then(function () {
+      D3.waitedMs = Date.now() - D3.t0;
+      if (D3.state === 'loading' && D3.pref === 'on') go3d();
+    }, function (e) { fail('model: ' + ((e && e.message) || e)); });
+  }
+  function go3d() {
+    clearTimeout(D3.timer);
+    D3.state = 'on'; D3.reason = '';
+    D3.api.setEnabled(true);
+    D3.api.measure();
+    redraw();
+  }
+  function to2d(state) {
+    clearTimeout(D3.timer);
+    var was = D3.state;
+    D3.state = state;
+    if (D3.api) D3.api.setEnabled(false);
+    if (was === 'on') redraw();
+  }
+  function fail(why) {
+    D3.reason = why;
+    to2d('failed');
+  }
+  function onSlow(fps) {
+    D3.reason = 'slow: ' + fps + ' fps in the first 3 s';
+    D3.pref = 'auto-off';
+    to2d('auto-off');
+    if (D3.api) D3.api.disposeAll();
+    if (D3.onAutoOff) { try { D3.onAutoOff(fps); } catch (e) { /* the save is the app's business */ } }
+  }
+  // called by pet3d.js when its module has run
+  function _module(api) {
+    D3.api = api;
+    api.onSlow = onSlow;
+    if (D3.state === 'loading') startLoad();
+  }
+  // show the pets that are on the page again with the current mode (not the ones in the middle of hatch / grow)
+  function redraw() {
+    tracked.forEach(function (el) {
+      if (el.isConnected && el._lp && !el._lpBusy) render(el, el._lp.stage, el._lp.mood, true);
+    });
+  }
+  function on3d(el) { return D3.state === 'on' && D3.api && D3.api.attached(el); }
+
+  function render(el, stage, mood, noJump) {
+    stage = SCALE[stage] ? stage : 'egg';
+    mood = FACES[mood] ? mood : 'normal';
+    el._lp = { stage: stage, mood: mood };
+    if (tracked.indexOf(el) < 0) tracked.push(el);
+    if (stage !== 'egg' && D3.state === 'on') {
+      try {
+        D3.api.show(el, stage, mood, { noJump: !!noJump });
+        el.setAttribute('data-stage', stage);
+        el.setAttribute('data-mood', mood);
+        el.setAttribute('data-pet', '3d');
+        el.setAttribute('role', 'img');
+        el.setAttribute('aria-label', NAMES[stage] + '・' + MOODS[mood]);
+        return;
+      } catch (e) { fail('render: ' + e.message); }
+    }
+    el.setAttribute('data-pet', '2d');
+    render2d(el, stage, mood);
+  }
+  function busy(el, p) {
+    el._lpBusy = true;
+    return p.then(function (v) { el._lpBusy = false; return v; }, function (e) { el._lpBusy = false; throw e; });
+  }
+  function hatch(el) {
+    el._lp = { stage: 'small', mood: 'yum' };
+    if (tracked.indexOf(el) < 0) tracked.push(el);
+    return busy(el, hatch2d(el, D3.state === 'on'));
+  }
+  function grow(el) {
+    el._lp = { stage: 'normal', mood: 'yum' };
+    if (tracked.indexOf(el) < 0) tracked.push(el);
+    if (D3.state === 'on') {
+      if (!on3d(el)) render(el, 'small', 'yum', true);
+      if (on3d(el)) return busy(el, grow3d(el));
+    }
+    return busy(el, grow2d(el));
+  }
+  function bounce(el) { if (on3d(el)) D3.api.bounce(el); else bounce2d(el); }
+  function mouth(el) { return (on3d(el) && D3.api.mouth(el)) || mouth2d(el); }
+  function info() {
+    var st = D3.api ? D3.api.stats : null;
+    return { pref: D3.pref, state: D3.state, reason: D3.reason, waitedMs: D3.waitedMs,
+      stats: st ? JSON.parse(JSON.stringify(st)) : null };
+  }
+
+  root.LuluPet = { render: render, hatch: hatch, grow: grow, bounce: bounce, mouth: mouth, formArt: formArt, timing: timing,
+    config: config, setPref: setPref, info: info, _module: _module, is3d: on3d };
   root.renderPet = render;
 })(window);
