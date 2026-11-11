@@ -128,7 +128,7 @@ svg { display: block; }
 .dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(0, 0, 0, .06); }
 .dot.now { box-shadow: 0 0 0 3px var(--card), 0 0 0 6px var(--btn); }
 .play-stage { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: 18px; min-height: 104px; }
-.play-pet { position: relative; width: clamp(96px, 34vw, 150px); height: clamp(96px, 34vw, 150px); }
+.play-pet { position: relative; width: clamp(120px, 50vw, 220px); height: clamp(120px, 50vw, 220px); }   /* v1.3.1 Tai 261111: 3D Lulu too small on the phone */
 .play-fruit { width: 72px; height: 72px; display: grid; place-items: center; }
 .play-fruit .fruit { width: 72px; height: 72px; }
 .panel { display: none; flex-direction: column; gap: 12px; background: var(--card); border-radius: 24px; padding: 16px; margin-top: auto; }
@@ -295,7 +295,7 @@ svg { display: block; }
 
 @media (max-height: 700px) {
   .play-stage { min-height: 88px; }
-  .play-pet { width: 88px; height: 88px; }
+  .play-pet { width: clamp(96px, 34vw, 140px); height: clamp(96px, 34vw, 140px); }   /* v1.3.1 */
   .home-pet { width: min(60vw, 220px); height: min(60vw, 220px); }
   .play-fruit, .play-fruit .fruit { width: 56px; height: 56px; }
   .spk-big { width: 88px; height: 88px; }
