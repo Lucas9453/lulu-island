@@ -20,7 +20,7 @@ const NS = 'http://www.w3.org/2000/svg';
 const C = { sprout: '#5fae53', gold: '#f3c53d', ruby: '#e2574c', tear: '#4fa9db', ink: '#1d2b3a', heart: '#f2738c' };
 
 let template = null, loading = null, gpuName = '';
-let enabled = false, raf = 0, onSlow = null;
+let enabled = false, raf = 0, onSlow = null, onContextLost = null;
 const views = [];
 const stats = { fps: null, frames: 0, ms: 0, measured: false, framesTotal: 0, drawing: false, renderer: '', loadMs: null };
 let meas = null;   // {t0, n, skip}
@@ -175,6 +175,13 @@ function makeView(el) {
     userYaw: 0, drag: null, releaseT: 0, releaseYaw: 0, accShown: '', symShown: '',
     last: { x: 50, y: 50 }
   };
+  v.contextLost = (e) => {
+    e.preventDefault();
+    if (!views.includes(v)) return;
+    // Cached views must also be retired; restoring this canvas must not resume 3D.
+    if (onContextLost) onContextLost('context lost: WebGL canvas disconnected');
+  };
+  canvas.addEventListener('webglcontextlost', v.contextLost);
   // drag to turn; let go -> back to the front within 2 s (spec 15-3)
   root.addEventListener('pointerdown', (e) => {
     v.drag = { id: e.pointerId, x: e.clientX, yaw: v.userYaw };
@@ -405,6 +412,7 @@ function disposeAll() {
   setEnabled(false);
   views.splice(0).forEach((v) => {
     if (v.root.parentNode) v.root.parentNode.removeChild(v.root);
+    v.canvas.removeEventListener('webglcontextlost', v.contextLost);
     v.renderer.dispose();
   });
 }
@@ -412,6 +420,7 @@ function disposeAll() {
 const api = {
   load, show, bounce, mouth: mouthAt, attached, pop, grow, setEnabled, measure, disposeAll, stats,
   set onSlow(f) { onSlow = f; },
+  set onContextLost(f) { onContextLost = f; },
   view: viewOf,
   STAGE_SCALE,
   scaleOf(el) { const v = viewOf(el); return v ? { stage: v.stage, scale: v.scale, actual: v.stageG.scale.x } : null; }

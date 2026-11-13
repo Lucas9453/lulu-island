@@ -414,6 +414,11 @@
   function _module(api) {
     D3.api = api;
     api.onSlow = onSlow;
+    api.onContextLost = function (why) {
+      fail(why);
+      // A manual off/on must create fresh canvases. Only low fps persists auto-off.
+      api.disposeAll();
+    };
     if (D3.state === 'loading') startLoad();
   }
   // show the pets that are on the page again with the current mode (not the ones in the middle of hatch / grow)
